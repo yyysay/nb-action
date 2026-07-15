@@ -5,6 +5,8 @@ import (
 	"flag"
 	"fmt"
 	"os"
+
+	"github.com/yangtudou/nb-action/actions" // 👈 导入复数包名
 )
 
 func main() {
@@ -13,6 +15,9 @@ func main() {
 		os.Getenv("BARK_SERVER"),
 		os.Getenv("BARK_KEY"),
 	)
+
+	// 注册你新加入的、轻量化的镜像同步工具 (移除了冗余的 "registry-sync" 字符串参数)
+	Register(&actions.RegistrySync{})
 
 	// 2. 无参数时打印帮助
 	if len(os.Args) < 2 {
@@ -74,13 +79,15 @@ func printUsage() {
 命令:
   server [port]              启动 HTTP API 服务 (默认 8080)
   pipe <action1>,<action2>   管道模式：执行链式操作
-  <action> [args...]         执行单个动作 (如: random 64, bark title content)
+  <action> [args...]         执行单个动作 (如: random 64, bark title content, registry-sync --dst-prefix ...)
 
 举例:
   nb-action server 8080
   nb-action random 64
+  nb-action registry-sync --src alpine:latest --dst-prefix myregistry.com/backup
   nb-action pipe random 64, bark
-	`)
+  nb-action pipe random 8, registry-sync --src ubuntu:{value} --dst-prefix myregistry.com/backup
+    `)
 }
 
 // 执行辅助函数
