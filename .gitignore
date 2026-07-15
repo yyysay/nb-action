@@ -1,5 +1,5 @@
-nb-action
-registry-sync
+/nb-action
+/registry-sync
 
 # macOS
 .DS_Store
