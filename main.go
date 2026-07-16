@@ -19,6 +19,9 @@ func main() {
 	// 注册你新加入的、轻量化的镜像同步工具 (移除了冗余的 "registry-sync" 字符串参数)
 	Register(&actions.RegistrySync{})
 
+	// 👈 这里！给你的 pwd 动作正式“上户口”
+	Register(&actions.Password{})
+
 	// 2. 无参数时打印帮助
 	if len(os.Args) < 2 {
 		printUsage()
