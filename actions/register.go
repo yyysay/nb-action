@@ -1,6 +1,8 @@
 package actions
 
 import (
+	"github.com/yangtudou/nb-action/actions/pwd"
+	"github.com/yangtudou/nb-action/actions/test"
 	"github.com/yangtudou/nb-action/core"
 )
 
@@ -15,8 +17,8 @@ func RegisterAll(
 			server,
 			deviceKey,
 		),
-		NewTest(),
-		NewPassword(),
+		test.New(),
+		pwd.New(),
 		&RegistrySync{},
 	)
 }

@@ -1,4 +1,4 @@
-package actions
+package test
 
 import (
 	"context"
@@ -6,7 +6,7 @@ import (
 
 type Test struct{}
 
-func NewTest() *Test {
+func New() *Test {
 	return &Test{}
 }
 
@@ -19,18 +19,7 @@ func (t *Test) Description() string {
 }
 
 func (t *Test) Help() string {
-	return `
-test
-
-测试 Action，用于验证管道和执行流程
-
-Usage:
-  nb-action test
-
-Examples:
-  nb-action test
-  nb-action pipe pwd rand 8,test
-`
+	return helpText
 }
 
 func (t *Test) Execute(
@@ -41,8 +30,9 @@ func (t *Test) Execute(
 	map[string]interface{},
 	error,
 ) {
-	// 默认拿传入的第一个参数作为 value
+
 	val := ""
+
 	if len(args) > 0 {
 		val = args[0]
 	}
