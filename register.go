@@ -15,6 +15,6 @@ func RegisterActions(
 			deviceKey,
 		),
 		actions.NewTest(),
-		actions.NewRandom(),
+		actions.NewPassword(),
 	)
 }
