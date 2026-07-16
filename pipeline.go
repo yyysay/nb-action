@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json" // 👈 引入 JSON 库，用来智能格式化 map/slice 供下游展示
 	"fmt"
 	"os"
 	"strings"
@@ -37,6 +38,28 @@ func parseByComma(args []string) [][]string {
 	return steps
 }
 
+// formatValue 智能格式化传给下游占位符的 value
+func formatValue(val interface{}) string {
+	if val == nil {
+		return ""
+	}
+
+	switch v := val.(type) {
+	case string:
+		return v
+	case map[string]interface{}, []interface{}, []string:
+		// 🟢 核心魔法：如果上游传下来的是 Map 或 数组，在 CLI 替换渲染时自动转成无换行的 JSON 字符串
+		bytes, err := json.Marshal(v)
+		if err == nil {
+			return string(bytes)
+		}
+		return fmt.Sprintf("%v", v)
+	default:
+		// 其他基础类型（数字、布尔）直接按原样输出字符串
+		return fmt.Sprintf("%v", v)
+	}
+}
+
 // resolveArgs 负责在执行前，将参数中形如 {key} 的占位符，动态替换为上游输出的值
 func resolveArgs(args []string, input map[string]interface{}) []string {
 	resolved := make([]string, len(args))
@@ -47,7 +70,8 @@ func resolveArgs(args []string, input map[string]interface{}) []string {
 		for k, v := range input {
 			placeholder := "{" + k + "}"
 			if strings.Contains(temp, placeholder) {
-				strVal := fmt.Sprintf("%v", v)
+				// 💡 采用智能格式化函数，避免把 map 渲染成极其难看的 "map[...]"
+				strVal := formatValue(v)
 				temp = strings.ReplaceAll(temp, placeholder, strVal)
 			}
 		}
@@ -80,7 +104,7 @@ func runPipeline(ctx context.Context, steps [][]string, initialInput map[string]
 			os.Exit(1)
 		}
 
-		// 1. 用累积的 currentInput 动态渲染当前步骤的命令行参数
+		// 1. 用累积的 currentInput 动态渲染当前步骤 learnings (参数替换)
 		resolvedArgs := resolveArgs(actionArgs, currentInput)
 
 		// 2. 接力执行（此时的 currentInput 包含了前面所有步骤累积下来的所有 key-value 对）
