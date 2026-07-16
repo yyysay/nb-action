@@ -4,7 +4,7 @@ go 1.26.4
 
 require (
 	github.com/google/go-containerregistry v0.21.7
-	golang.org/x/crypto v0.17.0
+	golang.org/x/crypto v0.37.0
 )
 
 require (
