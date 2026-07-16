@@ -5,6 +5,8 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"strings"
+	"sync" // 👈 引入互斥锁，确保并发 append 绝对安全
 	"time"
 
 	"github.com/yangtudou/nb-action/internal/logger"
@@ -83,6 +85,10 @@ func (a *RegistrySync) Execute(ctx context.Context, args []string, input map[str
 	stats := result.New(total)
 	var tasks []worker.Task
 
+	// 💡 初始化互斥锁和收集成功目标的切片
+	var mu sync.Mutex
+	syncedDestinations := make([]string, 0, total)
+
 	for i, img := range images {
 		index := i + 1
 		image := img // 闭包安全
@@ -94,6 +100,11 @@ func (a *RegistrySync) Execute(ctx context.Context, args []string, input map[str
 			if *dryRun {
 				logger.Printf("[%d/%d] Dry Run: %s -> %s\n", index, total, source, target)
 				stats.AddSuccess()
+
+				// 🔒 加锁写入
+				mu.Lock()
+				syncedDestinations = append(syncedDestinations, target)
+				mu.Unlock()
 				return nil
 			}
 
@@ -109,6 +120,11 @@ func (a *RegistrySync) Execute(ctx context.Context, args []string, input map[str
 
 			stats.AddSuccess()
 			logger.Printf("[%d/%d] Success: %s\n", index, total, image)
+
+			// 🔒 加锁写入
+			mu.Lock()
+			syncedDestinations = append(syncedDestinations, target)
+			mu.Unlock()
 			return nil
 		})
 	}
@@ -123,6 +139,9 @@ func (a *RegistrySync) Execute(ctx context.Context, args []string, input map[str
 		"success":     stats.Success,
 		"failed":      stats.Failed,
 		"duration_ms": stats.Duration().Milliseconds(),
+
+		// 对接 test 规范化输出：动态拼接所有成功的目标镜像地址
+		"value": strings.Join(syncedDestinations, ","),
 	}
 
 	if stats.Failed > 0 {
