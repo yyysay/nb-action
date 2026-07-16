@@ -7,21 +7,28 @@ import (
 	"strings"
 )
 
-// parseByComma 负责把 ["random", "64", ",", "bark", "Secret: {value}"]
-// 切割成 [["random", "64"], ["bark", "Secret: {value}"]]
+// parseByComma 升级版：完美支持 "wg-keypair,bark"、"wg-keypair, bark"、"wg-keypair , bark" 等所有人类迷惑行为
 func parseByComma(args []string) [][]string {
 	var steps [][]string
 	var current []string
 
 	for _, arg := range args {
-		trimmed := strings.TrimSpace(arg)
-		if trimmed == "," {
-			if len(current) > 0 {
-				steps = append(steps, current)
-				current = []string{} // 重置，准备收集下一个 Action
+		// 核心改进：直接用逗号对每个参数进行二次切分
+		parts := strings.Split(arg, ",")
+		for i, part := range parts {
+			trimmed := strings.TrimSpace(part)
+
+			// 如果 index > 0，说明我们刚刚跨过了一个“逗号”
+			if i > 0 {
+				if len(current) > 0 {
+					steps = append(steps, current)
+					current = []string{} // 重置，准备收集下一个 Action
+				}
 			}
-		} else if trimmed != "" {
-			current = append(current, arg)
+
+			if trimmed != "" {
+				current = append(current, trimmed)
+			}
 		}
 	}
 	if len(current) > 0 {
@@ -83,8 +90,7 @@ func runPipeline(ctx context.Context, steps [][]string, initialInput map[string]
 			os.Exit(1)
 		}
 
-		// 3. 【核心改进】：增量合并，而不是直接覆盖！
-		// 这样前面所有步骤产生的字段（比如 random 产生的 value）都会保留在 currentInput 中，一路传到底！
+		// 3. 增量合并
 		if result != nil {
 			for k, v := range result {
 				currentInput[k] = v
