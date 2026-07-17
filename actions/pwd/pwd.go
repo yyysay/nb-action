@@ -5,41 +5,43 @@ import (
 	"fmt"
 )
 
-type Password struct{}
+type Action struct{}
 
-func New() *Password {
-	return &Password{}
+func New() *Action {
+	return &Action{}
 }
 
-func (p *Password) Name() string {
+func (a *Action) Name() string {
 	return "pwd"
 }
 
-func (p *Password) Description() string {
+func (a *Action) Description() string {
 	return "生成随机字符串或密码"
 }
 
-func (p *Password) Help() string {
+func (a *Action) Help() string {
 	return helpText
 }
 
-func (p *Password) Execute(
-	ctx context.Context,
+func (a *Action) Execute(
+	_ context.Context,
 	args []string,
-	input map[string]interface{},
+	_ map[string]interface{},
 ) (map[string]interface{}, error) {
 
 	if len(args) == 0 {
-		return nil, fmt.Errorf("missing subcommand")
+		return nil, fmt.Errorf(
+			"missing subcommand (supported: rand, wg-keypair)",
+		)
 	}
 
 	switch args[0] {
 
-	case "wg-keypair":
-		return generateWGKeypair()
-
 	case "rand":
 		return generateRand(args[1:])
+
+	case "wg-keypair":
+		return generateWGKeypair()
 
 	default:
 		return nil, fmt.Errorf(

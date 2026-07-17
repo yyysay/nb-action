@@ -2,19 +2,25 @@ package pwd
 
 import (
 	"encoding/base64"
+	"fmt"
 
 	"golang.org/x/crypto/curve25519"
 )
 
+const wireguardKeySize = 32
+
 func generateWGKeypair() (map[string]interface{}, error) {
 
-	privateKey, err := randomBytes(32)
+	privateKey, err := randomBytes(wireguardKeySize)
 
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf(
+			"generate private key: %w",
+			err,
+		)
 	}
 
-	// WireGuard clamp
+	// WireGuard Curve25519 clamp
 	privateKey[0] &= 248
 	privateKey[31] = (privateKey[31] & 127) | 64
 
@@ -24,7 +30,10 @@ func generateWGKeypair() (map[string]interface{}, error) {
 	)
 
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf(
+			"generate public key: %w",
+			err,
+		)
 	}
 
 	return map[string]interface{}{
