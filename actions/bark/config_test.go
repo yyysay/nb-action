@@ -6,33 +6,33 @@ import (
 
 func TestLoadConfig(t *testing.T) {
 
-	// 设置正确的 AES key
-
 	t.Setenv(
 		"BARK_AES_KEY",
 		"12345678901234567890123456789012",
 	)
-
-	// 设置正确的 IV
 
 	t.Setenv(
 		"BARK_AES_IV",
 		"123456789012",
 	)
 
-	// 加载配置
+	t.Setenv(
+		"BARK_SERVER",
+		"https://api.day.app",
+	)
+
+	t.Setenv(
+		"BARK_DEVICE_KEY",
+		"test-device-key",
+	)
 
 	config, err := LoadConfig()
-
-	// 检查错误
 
 	if err != nil {
 
 		t.Fatal(err)
 
 	}
-
-	// 检查 key 长度
 
 	if len(config.Key) != 32 {
 
@@ -43,8 +43,6 @@ func TestLoadConfig(t *testing.T) {
 
 	}
 
-	// 检查 IV 长度
-
 	if len(config.IV) != 12 {
 
 		t.Fatalf(
@@ -54,6 +52,24 @@ func TestLoadConfig(t *testing.T) {
 
 	}
 
-	t.Log("config load success")
+	if config.Server == "" {
+
+		t.Fatal(
+			"server empty",
+		)
+
+	}
+
+	if config.DeviceKey == "" {
+
+		t.Fatal(
+			"device key empty",
+		)
+
+	}
+
+	t.Log(
+		"config load success",
+	)
 
 }

@@ -6,7 +6,7 @@ import (
 
 func TestEncrypt(t *testing.T) {
 
-	// 设置测试用 AES key
+	// 设置 AES key
 	// AES-256 需要 32 字节
 
 	t.Setenv(
@@ -14,15 +14,29 @@ func TestEncrypt(t *testing.T) {
 		"12345678901234567890123456789012",
 	)
 
-	// 设置测试用 nonce(iv)
-	// GCM 使用 12 字节
+	// 设置 AES GCM nonce(iv)
+	// GCM 推荐 12 字节
 
 	t.Setenv(
 		"BARK_AES_IV",
 		"123456789012",
 	)
 
-	// 准备 Bark 消息
+	// 设置 Bark Server
+
+	t.Setenv(
+		"BARK_SERVER",
+		"https://api.day.app",
+	)
+
+	// 设置 Bark DeviceKey
+
+	t.Setenv(
+		"BARK_DEVICE_KEY",
+		"test-device-key",
+	)
+
+	// 创建 Bark 消息
 
 	payload := BarkPayload{
 
@@ -49,14 +63,20 @@ func TestEncrypt(t *testing.T) {
 
 	if result == "" {
 
-		t.Fatal("encrypt result is empty")
+		t.Fatal(
+			"encrypt result is empty",
+		)
 
 	}
 
-	// 输出最终结果观察
+	// 输出结果观察
 
-	t.Log("encrypted result:")
+	t.Log(
+		"encrypted result:",
+	)
 
-	t.Log(result)
+	t.Log(
+		result,
+	)
 
 }

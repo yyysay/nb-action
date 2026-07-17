@@ -4,30 +4,23 @@
 ```mermaid
 flowchart TD
 
-    A[BarkPayload<br/>Title + Body]
-    
-    A --> B[json.Marshal]
+    A[BarkPayload] --> B[encrypt.go]
 
-    B --> C[JSON []byte<br/>明文数据]
+    B --> C[JSON]
+    C --> D[AES-GCM]
+    D --> E[ciphertext]
 
-    C --> D[AES-256-GCM 加密]
+    E --> F[push.go]
 
-    E[配置<br/>BARK_AES_KEY<br/>32 bytes]
+    G[Config]
+    G --> B
+    G --> F
 
-    F[配置<br/>BARK_AES_IV<br/>12 bytes]
+    F --> H[Server]
+    F --> I[DeviceKey]
 
-    E --> D
-    F --> D
-
-    D --> G[ciphertext []byte<br/>密文 + GCM认证标签]
-
-    G --> H[Base64 编码]
-
-    H --> I[URL Escape]
-
-    I --> J[最终 ciphertext 字符串]
-
-    J --> K[Bark Push 请求]
+    H --> J[Bark Server]
+    I --> J
 ```
 
 # 函数
