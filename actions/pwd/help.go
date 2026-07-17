@@ -11,6 +11,7 @@ Usage:
 
 Examples:
   nb-action pwd rand 32
+  nb-action pwd rand 32 --base64
   nb-action pwd wg-keypair
 
 Commands:
