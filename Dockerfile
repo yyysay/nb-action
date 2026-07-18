@@ -1,4 +1,3 @@
-# 关键点：将版本从 1.22 升级到 1.26
 FROM golang:1.26-alpine AS builder
 
 WORKDIR /app
