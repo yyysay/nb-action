@@ -1,0 +1,10 @@
+/nb-action
+/registry-sync
+
+# windows
+/nb-action.exe
+/registry-sync.exe
+
+# macOS
+.DS_Store
+**/.DS_Store
