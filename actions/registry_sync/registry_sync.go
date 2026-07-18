@@ -1,5 +1,6 @@
 package registry_sync
 
+// 定义 struct 数据结构体
 type RegistrySync struct{}
 
 func New() *RegistrySync {

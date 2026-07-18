@@ -3,7 +3,8 @@ package pwd
 const helpText = `
 pwd
 
-生成随机字符串或 WireGuard 密钥
+1. 生成随机字符串
+2. 生成 WireGuard 密钥对
 
 Usage:
   nb-action pwd rand <length>

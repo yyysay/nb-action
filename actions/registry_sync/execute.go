@@ -47,6 +47,16 @@ func (r *RegistrySync) Execute(
 		)
 	}
 
+	// 增加私有仓库登入认证
+	err = PrepareAuth()
+
+	if err != nil {
+		return nil, fmt.Errorf(
+			"registry auth failed: %w",
+			err,
+		)
+	}
+
 	if opt.Concurrency < 1 {
 		opt.Concurrency = 1
 	}
