@@ -2,23 +2,36 @@ package logger
 
 import (
 	"fmt"
+	"os"
 	"sync"
 )
 
 var mu sync.Mutex
 
-// Println 线程安全输出
-func Println(args ...any) {
+// Println 输出调试日志到 stderr
+func Println(
+	args ...any,
+) {
 	mu.Lock()
 	defer mu.Unlock()
 
-	fmt.Println(args...)
+	fmt.Fprintln(
+		os.Stderr,
+		args...,
+	)
 }
 
-// Printf 线程安全格式化输出
-func Printf(format string, args ...any) {
+// Printf 输出格式日志到 stderr
+func Printf(
+	format string,
+	args ...any,
+) {
 	mu.Lock()
 	defer mu.Unlock()
 
-	fmt.Printf(format, args...)
+	fmt.Fprintf(
+		os.Stderr,
+		format,
+		args...,
+	)
 }

@@ -1,33 +1,69 @@
 package retry
 
 import (
+	"strings"
 	"time"
 )
 
-// Do 执行带重试的任务
-//
-// attempts: 最大尝试次数
-// delay: 初始等待时间
-func Do(task func() error, attempts int, delay time.Duration) error {
+func Do(
+	image string,
+	task func() error,
+	attempts int,
+	delay time.Duration,
+) error {
+
 	var err error
 
+	if attempts < 1 {
+		attempts = 1
+	}
+
 	for i := 0; i < attempts; i++ {
+
 		err = task()
 
 		if err == nil {
 			return nil
 		}
 
-		// 最后一次失败，不等待
+		if !retryable(err) {
+			return err
+		}
+
 		if i == attempts-1 {
 			break
 		}
 
 		time.Sleep(delay)
 
-		// 简单指数退避
 		delay *= 2
 	}
 
 	return err
+}
+
+func retryable(
+	err error,
+) bool {
+
+	message := err.Error()
+
+	nonRetryErrors := []string{
+		"MANIFEST_UNKNOWN",
+		"NAME_UNKNOWN",
+		"denied",
+		"unauthorized",
+	}
+
+	for _, item := range nonRetryErrors {
+
+		if strings.Contains(
+			message,
+			item,
+		) {
+			return false
+		}
+	}
+
+	return true
 }

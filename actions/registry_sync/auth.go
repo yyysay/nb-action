@@ -1,45 +1,151 @@
 package registry_sync
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
+
+	"github.com/google/go-containerregistry/pkg/authn"
 )
+
+type AuthMode string
+
+const (
+	AuthModeAnonymous AuthMode = "anonymous"
+
+	AuthModeDocker AuthMode = "docker"
+
+	AuthModeEnv AuthMode = "env"
+)
+
+// AuthConfig
+//
+// source 和 destination 分开认证
+type AuthConfig struct {
+
+	// source registry
+	SrcMode AuthMode
+
+	SrcKeychain authn.Keychain
+
+	// destination registry
+	DstMode AuthMode
+
+	DstKeychain authn.Keychain
+}
+
+// envKeychain
+//
+// 使用环境变量认证
+type envKeychain struct {
+	auth authn.Authenticator
+}
+
+func (k envKeychain) Resolve(
+	target authn.Resource,
+) (authn.Authenticator, error) {
+
+	return k.auth, nil
+}
 
 // PrepareAuth
 //
-// 认证准备流程:
+// 认证优先级:
 //
-// 1. 检查本地 Docker 配置
-// 2. 没有配置时检查环境变量
-// 3. 后续可以在这里扩展 docker login
-func PrepareAuth() error {
+// source:
+// 1. SRC_REGISTRY_USERNAME/PASSWORD
+// 2. ~/.docker/config.json
+// 3. anonymous
+//
+// destination:
+// 1. DST_REGISTRY_USERNAME/PASSWORD
+// 2. ~/.docker/config.json
+// 3. anonymous
+func PrepareAuth() (*AuthConfig, error) {
 
-	if hasDockerConfig() {
-		fmt.Println("docker config found")
-		return nil
+	config := &AuthConfig{}
+
+	// ==========================
+	// source auth
+	// ==========================
+
+	srcUsername := os.Getenv(
+		"SRC_REGISTRY_USERNAME",
+	)
+
+	srcPassword := os.Getenv(
+		"SRC_REGISTRY_PASSWORD",
+	)
+
+	if srcUsername != "" && srcPassword != "" {
+
+		config.SrcMode = AuthModeEnv
+
+		config.SrcKeychain = envKeychain{
+			auth: authn.FromConfig(
+				authn.AuthConfig{
+					Username: srcUsername,
+					Password: srcPassword,
+				},
+			),
+		}
+
+	} else if hasDockerConfig() {
+
+		config.SrcMode = AuthModeDocker
+
+		config.SrcKeychain = authn.DefaultKeychain
+
+	} else {
+
+		config.SrcMode = AuthModeAnonymous
+
+		config.SrcKeychain = authn.DefaultKeychain
 	}
 
-	username := os.Getenv("REGISTRY_USERNAME")
-	password := os.Getenv("REGISTRY_PASSWORD")
+	// ==========================
+	// destination auth
+	// ==========================
 
-	if username == "" || password == "" {
-		return fmt.Errorf(
-			"registry credentials not found",
-		)
+	dstUsername := os.Getenv(
+		"DST_REGISTRY_USERNAME",
+	)
+
+	dstPassword := os.Getenv(
+		"DST_REGISTRY_PASSWORD",
+	)
+
+	if dstUsername != "" && dstPassword != "" {
+
+		config.DstMode = AuthModeEnv
+
+		config.DstKeychain = envKeychain{
+			auth: authn.FromConfig(
+				authn.AuthConfig{
+					Username: dstUsername,
+					Password: dstPassword,
+				},
+			),
+		}
+
+	} else if hasDockerConfig() {
+
+		config.DstMode = AuthModeDocker
+
+		config.DstKeychain = authn.DefaultKeychain
+
+	} else {
+
+		config.DstMode = AuthModeAnonymous
+
+		config.DstKeychain = authn.DefaultKeychain
 	}
 
-	fmt.Println("registry credentials found")
-
-	return nil
+	return config, nil
 }
 
 // hasDockerConfig
 //
-// 判断本机是否存在 Docker 登录配置
-//
-// 默认路径:
-// ~/.docker/config.json
+// 判断本机 Docker config 是否存在
 func hasDockerConfig() bool {
 
 	home, err := os.UserHomeDir()

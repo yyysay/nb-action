@@ -3,27 +3,104 @@ package syncer
 import (
 	"strings"
 
-	"github.com/google/go-containerregistry/pkg/crane"
+	"github.com/google/go-containerregistry/pkg/authn"
+	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
+	"github.com/google/go-containerregistry/pkg/v1/remote"
 )
 
 // Copy 镜像同步
-func Copy(src string, dst string) error {
-	return CopyWithPlatform(src, dst, "")
-}
+func Copy(
+	src string,
+	dst string,
+	srcKeychain authn.Keychain,
+	dstKeychain authn.Keychain,
+) error {
 
-// CopyWithPlatform 指定架构同步
-func CopyWithPlatform(src string, dst string, targetPlatform string) error {
-	if targetPlatform == "" {
-		return crane.Copy(src, dst)
-	}
-
-	p := parsePlatform(targetPlatform)
-
-	return crane.Copy(
+	return CopyWithPlatform(
 		src,
 		dst,
-		crane.WithPlatform(p),
+		"",
+		srcKeychain,
+		dstKeychain,
+	)
+}
+
+// CopyWithPlatform
+//
+// source 使用 srcKeychain
+// destination 使用 dstKeychain
+func CopyWithPlatform(
+	src string,
+	dst string,
+	targetPlatform string,
+	srcKeychain authn.Keychain,
+	dstKeychain authn.Keychain,
+) error {
+
+	srcRef, err := name.ParseReference(
+		src,
+	)
+
+	if err != nil {
+		return err
+	}
+
+	dstRef, err := name.ParseReference(
+		dst,
+	)
+
+	if err != nil {
+		return err
+	}
+
+	srcOptions := []remote.Option{}
+
+	if srcKeychain != nil {
+
+		srcOptions = append(
+			srcOptions,
+			remote.WithAuthFromKeychain(
+				srcKeychain,
+			),
+		)
+	}
+
+	if targetPlatform != "" {
+
+		srcOptions = append(
+			srcOptions,
+			remote.WithPlatform(
+				parsePlatform(targetPlatform),
+			),
+		)
+	}
+
+	img, err := remote.Image(
+		srcRef,
+		srcOptions...,
+	)
+
+	if err != nil {
+		return err
+	}
+
+	dstOptions := []remote.Option{}
+
+	if dstKeychain != nil {
+
+		dstOptions = append(
+			dstOptions,
+			remote.WithAuthFromKeychain(
+				dstKeychain,
+			),
+		)
+	}
+
+	return remote.Write(
+		dstRef,
+		img,
+		dstOptions...,
 	)
 }
 
@@ -32,10 +109,16 @@ func CopyWithPlatform(src string, dst string, targetPlatform string) error {
 // 格式:
 // linux/amd64
 // linux/arm64/v8
-func parsePlatform(value string) *v1.Platform {
-	parts := strings.Split(value, "/")
+func parsePlatform(
+	value string,
+) v1.Platform {
 
-	p := &v1.Platform{}
+	parts := strings.Split(
+		value,
+		"/",
+	)
+
+	p := v1.Platform{}
 
 	if len(parts) > 0 {
 		p.OS = parts[0]

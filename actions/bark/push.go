@@ -11,7 +11,7 @@ func push(
 ) error {
 
 	requestURL := fmt.Sprintf(
-		"%s/%s/推送加密?ciphertext=%s",
+		"%s/%s/%s",
 		config.Server,
 		config.DeviceKey,
 		ciphertext,

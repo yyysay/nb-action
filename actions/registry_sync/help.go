@@ -13,11 +13,11 @@ Required:
         目标镜像仓库
 
 Options:
+  --base <file>
+        基准镜像列表文件, 默认 images.txt
+
   --src-prefix <registry>
         源镜像仓库
-
-  --base <file>
-        镜像列表文件
 
   --src-flatten
         源仓库路径扁平化
@@ -41,5 +41,5 @@ Examples:
   nb-action registry-sync \
     --src-prefix docker.io \
     --dst-prefix registry.example.com \
-    --base images.txt
+    --dry-run
 `

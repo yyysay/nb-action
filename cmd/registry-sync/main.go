@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 
@@ -11,9 +12,8 @@ import (
 func main() {
 
 	if len(os.Args) < 2 {
-		fmt.Println(
-			"Usage: registry-sync sync [options]",
-		)
+
+		printUsage()
 
 		os.Exit(1)
 	}
@@ -22,54 +22,103 @@ func main() {
 
 	case "sync":
 
-		opt, err := registry_sync.ParseOptions(
-			os.Args[2:],
-		)
-
-		if err != nil {
-			fmt.Println(
-				"invalid arguments:",
-				err,
-			)
-
-			os.Exit(1)
-		}
-
-		if opt.DstPrefix == "" {
-
-			fmt.Println(
-				"missing required flag: --dst-prefix",
-			)
-
-			os.Exit(1)
-		}
-
-		result, err := registry_sync.Run(
-			context.Background(),
-			opt,
-		)
-
-		if err != nil {
-
-			fmt.Println(
-				"registry-sync failed:",
-				err,
-			)
-
-			os.Exit(1)
-		}
-
-		fmt.Println(
-			result,
-		)
+		runSync()
 
 	default:
 
-		fmt.Printf(
+		fmt.Fprintf(
+			os.Stderr,
 			"unknown command: %s\n",
 			os.Args[1],
 		)
 
+		printUsage()
+
 		os.Exit(1)
 	}
+}
+
+func runSync() {
+
+	opt, err := registry_sync.ParseOptions(
+		os.Args[2:],
+	)
+
+	if err != nil {
+
+		fmt.Fprintf(
+			os.Stderr,
+			"invalid arguments: %v\n",
+			err,
+		)
+
+		os.Exit(1)
+	}
+
+	if opt.DstPrefix == "" {
+
+		fmt.Fprintln(
+			os.Stderr,
+			"missing required flag: --dst-prefix",
+		)
+
+		os.Exit(1)
+	}
+
+	result, err := registry_sync.Run(
+		context.Background(),
+		opt,
+	)
+
+	if err != nil {
+
+		fmt.Fprintf(
+			os.Stderr,
+			"registry-sync failed: %v\n",
+			err,
+		)
+
+		os.Exit(1)
+	}
+
+	printJSON(
+		result,
+	)
+}
+
+func printJSON(
+	value interface{},
+) {
+
+	data, err := json.Marshal(
+		value,
+	)
+
+	if err != nil {
+
+		fmt.Fprintf(
+			os.Stderr,
+			"encode result failed: %v\n",
+			err,
+		)
+
+		os.Exit(1)
+	}
+
+	fmt.Println(
+		string(data),
+	)
+}
+
+func printUsage() {
+
+	fmt.Fprintln(
+		os.Stderr,
+		"Usage:",
+	)
+
+	fmt.Fprintln(
+		os.Stderr,
+		"  registry-sync sync [options]",
+	)
 }

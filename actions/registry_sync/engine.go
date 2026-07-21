@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/yangtudou/nb-action/internal/logger"
+	"github.com/yangtudou/nb-action/internal/output"
 	"github.com/yangtudou/nb-action/internal/parser"
 	"github.com/yangtudou/nb-action/internal/resolver"
 	"github.com/yangtudou/nb-action/internal/result"
@@ -19,7 +20,7 @@ func Run(
 	opt *Options,
 ) (map[string]interface{}, error) {
 
-	err := PrepareAuth()
+	authConfig, err := PrepareAuth()
 
 	if err != nil {
 		return nil, err
@@ -48,6 +49,11 @@ func Run(
 		}
 	}
 
+	output.Start(
+		len(images),
+		opt.Concurrency,
+	)
+
 	stats := result.New(
 		len(images),
 	)
@@ -60,20 +66,41 @@ func Run(
 		len(images),
 	)
 
+	mappings := make(
+		[]map[string]string,
+		0,
+		len(images),
+	)
+
+	records := make(
+		[]output.Record,
+		len(images),
+	)
+
 	tasks := make(
 		[]worker.Task,
 		0,
 		len(images),
 	)
 
-	for i, img := range images {
+	for index, img := range images {
 
-		index := i + 1
 		image := img
+		itemIndex := index
 
 		tasks = append(
 			tasks,
 			func() error {
+
+				select {
+
+				case <-ctx.Done():
+
+					return ctx.Err()
+
+				default:
+
+				}
 
 				source := resolver.Resolve(
 					image,
@@ -91,41 +118,93 @@ func Run(
 					},
 				)
 
+				item := result.Item{
+					Image:  image,
+					Source: source,
+					Target: target,
+				}
+
+				record := output.Record{
+					Image:  image,
+					Target: target,
+				}
+
 				if opt.DryRun {
 
-					logger.Printf(
-						"[%d/%d] %s -> %s",
-						index,
-						len(images),
-						source,
+					item.Status = "success"
+
+					record.Status = "success"
+
+					stats.AddSuccess(
+						item,
+					)
+
+					mu.Lock()
+
+					targets = append(
+						targets,
 						target,
 					)
 
-				} else {
-
-					err := retry.Do(
-						func() error {
-
-							return syncer.CopyWithPlatform(
-								source,
-								target,
-								opt.Platform,
-							)
-
+					mappings = append(
+						mappings,
+						map[string]string{
+							"source": source,
+							"target": target,
 						},
-						opt.Retries,
-						2*time.Second,
 					)
 
-					if err != nil {
+					records[itemIndex] = record
 
-						stats.AddFailed()
+					mu.Unlock()
 
-						return err
-					}
+					return nil
 				}
 
-				stats.AddSuccess()
+				err := retry.Do(
+					image,
+					func() error {
+
+						return syncer.CopyWithPlatform(
+							source,
+							target,
+							opt.Platform,
+							authConfig.SrcKeychain,
+							authConfig.DstKeychain,
+						)
+					},
+					opt.Retries,
+					2*time.Second,
+				)
+
+				if err != nil {
+
+					item.Status = "failed"
+					item.Error = err.Error()
+
+					record.Status = "failed"
+					record.Error = err.Error()
+
+					stats.AddFailed(
+						item,
+					)
+
+					mu.Lock()
+
+					records[itemIndex] = record
+
+					mu.Unlock()
+
+					return nil
+				}
+
+				item.Status = "success"
+
+				record.Status = "success"
+
+				stats.AddSuccess(
+					item,
+				)
 
 				mu.Lock()
 
@@ -133,6 +212,8 @@ func Run(
 					targets,
 					target,
 				)
+
+				records[itemIndex] = record
 
 				mu.Unlock()
 
@@ -150,8 +231,37 @@ func Run(
 		return nil, err
 	}
 
+	for index := range records {
+
+		output.PrintItem(
+			index+1,
+			len(records),
+			records[index],
+		)
+	}
+
+	output.Finish(
+		stats.Success,
+		stats.Failed,
+		stats.Duration(),
+	)
+
+	logger.Printf(
+		"registry-sync finished success=%d failed=%d\n",
+		stats.Success,
+		stats.Failed,
+	)
+
 	return map[string]interface{}{
+
 		"status": "ok",
+
+		"auth_mode": map[string]interface{}{
+			"source":      authConfig.SrcMode,
+			"destination": authConfig.DstMode,
+		},
+
+		"dry_run": opt.DryRun,
 
 		"total": stats.Total,
 
@@ -162,7 +272,9 @@ func Run(
 		"duration_ms": stats.Duration().Milliseconds(),
 
 		"value": map[string]interface{}{
-			"images": targets,
+			"images":  targets,
+			"mapping": mappings,
+			"items":   stats.Items,
 		},
 	}, nil
 }
